@@ -1,4 +1,4 @@
-from ctransformers import AutoModelForCausalLM
+from ctransformers import AutoModelForCausalLM, Config
 
 MODEL_ID = 'TheBloke/Llama-2-13B-chat-GGML'
 MODEL_FILE = 'llama-2-13b-chat.ggmlv3.q8_0.bin'
@@ -24,7 +24,26 @@ class Inference:
     Inference class for generating cover letters
     """
     def __init__(self) -> None:
-        self.model = AutoModelForCausalLM.from_pretrained(MODEL_ID, model_file=MODEL_FILE, model_type="llama", gpu_layers=50)
+        self.model = AutoModelForCausalLM.from_pretrained(MODEL_ID, model_file=MODEL_FILE, model_type="llama", gpu_layers=100)
+        self.model.config.max_new_tokens = 200
+    def set_max_new_tokens(self, max_new_tokens: int) -> None:
+        """
+        Set the max new tokens for the model
+        @param max_new_tokens: the max new tokens
+        """
+        self.model.config.max_new_tokens = max_new_tokens
+    def set_repetition_penalty(self, repetition_penalty: float) -> None:
+        """
+        Set the repetition penalty for the model
+        @param repetition_penalty: the repetition penalty
+        """
+        self.model.config.repetition_penalty = repetition_penalty
+    def get_config(self) -> Config:
+        """
+        Get the config for the model
+        @return: the config
+        """
+        return self.model.config
     def generate(self, prompt: str) -> str:
         """
         Generate the cover letter
@@ -34,4 +53,6 @@ class Inference:
         input_ids = self.model.tokenize(prompt)
         output = ""
         for i in self.model.generate(input_ids, repetition_penalty=1.2):
-            output += self.model.detokenize(i)
+            p_output = self.model.detokenize(i)
+            output += p_output
+        return output

@@ -1,93 +1,221 @@
-
 import os
+import curses
 from utils.decompose import decompose_job, decompose_resume
 from utils.inference import Inference, build_prompt
 
-# recursivly go into the children of the body until we find <ul> tags, then return the ul tag followed by the previous sibling
-
 RESUME_PATH = "assets/resumes/"
 JOB_PATH = "assets/jobs/"
+OUTPUT_FILE = "output/cover-letter.md"
 
-def main():
+def select_file(stdscr, title: str, path: str, file_extension=".html") -> str:
+    """
+    Select a file from the given path
+    @param stdscr: the curses screen
+    @param title: the title of the file selection
+    @param path: the path to select the file from
+    @param file_extension: the file extension to select
+    @return: the selected file
+    """
+    stdscr.clear()
+    stdscr.addstr(title + "\n")
+    stdscr.addstr("Select a file:\n")
+
+    files = [f for f in os.listdir(path) if file_extension in f]
+
+    selected_index = 0
+    
+    while True:
+        stdscr.clear()
+        stdscr.addstr(title + "\n")
+        stdscr.addstr("Select a file:\n")
+        
+        for index, file in enumerate(files):
+            if index == selected_index:
+                stdscr.addstr(f"> {file}\n")
+            else:
+                stdscr.addstr(f"  {file}\n")
+        
+        stdscr.refresh()
+        
+        key = stdscr.getch()
+        
+        if key == curses.KEY_DOWN:
+            selected_index = (selected_index + 1) % len(files)
+        elif key == curses.KEY_UP:
+            selected_index = (selected_index - 1) % len(files)
+        elif key == ord(' '):  # Spacebar to select
+            return os.path.join(path, files[selected_index])
+        
+def generate_cover_letter(stdscr, inference: Inference):
+    """
+    Generate the cover letter
+    @param stdscr: the curses screen
+    @param inference: the inference object
+    """
+    stdscr.clear()
+    stdscr.addstr("Enter your full name: ")
+    stdscr.refresh()
+    name = stdscr.getstr().decode("utf-8")
+    stdscr.clear()
+    curses.noecho()
+    
+    job_path = select_file(stdscr, "Job Description", JOB_PATH)
+
+    with open(job_path, "r") as f:
+        html_content = f.read()
+
+    job = decompose_job(html_content)
+
+    if job is None or job == "{}":
+        stdscr.addstr("Could not decompose job description, exiting...")
+        stdscr.refresh()
+        stdscr.getch()
+        return
+
+    resume_path = select_file(stdscr, "Resume", RESUME_PATH)
+
+    with open(resume_path, "r") as f:
+        html_content = f.read()
+
+    resume = decompose_resume(html_content)
+
+    if resume is None or resume == "{}":
+        stdscr.addstr("Could not decompose resume, exiting...")
+        stdscr.refresh()
+        stdscr.getch()
+        return
+
+    stdscr.addstr("Generating prompt...\n")
+    stdscr.refresh()
+    prompt = build_prompt(name, job, resume)
+    stdscr.addstr("Generating cover letter...\n")
+    stdscr.refresh()
+    cover_letter = inference.generate(prompt)
+
+    stdscr.addstr("Saving cover letter...\n")
+    with open(OUTPUT_FILE, "w") as f:
+        f.write(cover_letter)
+
+    stdscr.addstr("Cover letter generated and saved as 'cover-letter.md'. Press any key to exit.")
+    stdscr.refresh()
+    stdscr.getch()
+    stdscr.clear()
+    render_menu(stdscr, inference)
+
+def render_settings(stdscr, inference: Inference):
+    """
+    Render the settings menu
+        Up and down arrow keys to select
+        Spacebar to select
+        Left and right arrow keys to change value
+    @param stdscr: the curses screen
+    @param inference: the inference object
+    """
+    config = inference.get_config()
+    options = [("Max New Tokens",config.max_new_tokens), ("Repetition Penalty", config.repetition_penalty), ("Back", None)]
+    selected_index = 0
+
+    while True:
+        stdscr.clear()
+        stdscr.addstr("Settings\n")
+        stdscr.addstr("Select an option:\n")
+
+        for index, option in enumerate(options):
+            if index == selected_index:
+                if option[1] is not None:
+                    stdscr.addstr(f"> {option[0]}: {option[1]}\n")
+                else:
+                    stdscr.addstr(f"> {option[0]}\n")
+            else:
+                if option[1] is not None:
+                    stdscr.addstr(f"  {option[0]}: {option[1]}\n")
+                else:
+                    stdscr.addstr(f"  {option[0]}\n")
+        
+        stdscr.refresh()
+
+        key = stdscr.getch()
+
+        if key == curses.KEY_DOWN:
+            selected_index = (selected_index + 1) % len(options)
+        elif key == curses.KEY_UP:
+            selected_index = (selected_index - 1) % len(options)
+        elif key == curses.KEY_LEFT:
+            if selected_index == 0:
+                options[selected_index] = (options[selected_index][0], options[selected_index][1] - 10)
+            elif selected_index == 1:
+                options[selected_index] = (options[selected_index][0], options[selected_index][1] - 0.1)
+        elif key == curses.KEY_RIGHT:
+            if selected_index == 0:
+                options[selected_index] = (options[selected_index][0], options[selected_index][1] + 10)
+            elif selected_index == 1:
+                options[selected_index] = (options[selected_index][0], options[selected_index][1] + 0.1)
+        elif key == ord(' '):
+            if selected_index == 2:
+                break
+
+    inference.set_max_new_tokens(options[0][1])
+    inference.set_repetition_penalty(options[1][1])
+    render_menu(stdscr, inference)
+
+def render_menu(stdscr, inference: Inference):
+    """
+    Render the main menu
+        Up and down arrow keys to select
+        Spacebar to select
+    @param stdscr: the curses screen
+    @param inference: the inference object
+    """
+    options = ["Generate", "Settings", "Exit"]
+    selected_index = 0
+
+    while True:
+        stdscr.clear()
+        stdscr.addstr("Cover Letter Generator\n")
+        stdscr.addstr("Select an option:\n")
+
+        for index, option in enumerate(options):
+            if index == selected_index:
+                stdscr.addstr(f"> {option}\n")
+            else:
+                stdscr.addstr(f"  {option}\n")
+
+        stdscr.refresh()
+
+        key = stdscr.getch()
+
+        if key == curses.KEY_DOWN:
+            selected_index = (selected_index + 1) % len(options)
+        elif key == curses.KEY_UP:
+            selected_index = (selected_index - 1) % len(options)
+        elif key == ord(' '):
+            if selected_index == 0:
+                generate_cover_letter(stdscr, inference)
+            elif selected_index == 1:
+                render_settings(stdscr, inference)
+            elif selected_index == 2:
+                break
+
+
+def main(stdscr):
+    # Initialize curses
+    curses.curs_set(0)  # Hide the cursor
+    stdscr.clear()
+    curses.echo()
+
     if not os.path.exists("assets/"):
         os.mkdir("assets/")
     if not os.path.exists("assets/resumes/"):
         os.mkdir("assets/resumes/")
     if not os.path.exists("assets/jobs/"):
         os.mkdir("assets/jobs/")
-    
+    if not os.path.exists("output/"):
+        os.mkdir("output/")
+
     inference = Inference()
+
+    render_menu(stdscr, inference)
     
-    name = input("Enter your full name: ")
-    # list all the files in the assets folder
-    files = os.listdir(JOB_PATH)
-
-    if len(files) == 0:
-        print("No job descriptions found, exiting...")
-        exit()
-
-    for index, file in enumerate(files):
-        if ".html" not in file:
-            continue
-        print(f"{index}: {file}")
-
-    filename = input("Choose a file for job description: ")
-
-    if filename.isdigit() and int(filename) < len(files):
-        filename = files[int(filename)]
-    else:
-        print("Invalid input, exiting...")
-        exit()
-
-    # open the file and read the contents
-    with open(JOB_PATH + filename, "r") as f:
-        html_content = f.read()
-
-    # decompose the html content
-    job = decompose_job(html_content)
-    
-    if job is None or job == "\{\}":
-        print("Could not decompose job description, exiting...")
-        exit()
-
-    files = os.listdir(RESUME_PATH)
-
-    if len(files) == 0:
-        print("No resumes found, exiting...")
-        exit()
-
-    for index, file in enumerate(files):
-        if ".html" not in file:
-            continue
-        print(f"{index}: {file}")
-    
-    filename = input("Choose a file for resume: ")
-
-    if filename.isdigit() and int(filename) < len(files):
-        filename = files[int(filename)]
-    else:
-        print("Invalid input, exiting...")
-        exit()
-    
-    # open the file and read the contents
-    with open(RESUME_PATH + filename, "r") as f:
-        html_content = f.read()
-    
-    # decompose the html content
-    resume = decompose_resume(html_content)
-
-    if resume is None or resume == "\{\}":
-        print("Could not decompose resume, exiting...")
-        exit()
-    
-    # build the prompt
-    prompt = build_prompt(name, job, resume)
-
-    # generate the cover letter
-    cover_letter = inference.generate(prompt)
-
-    with open("cover-letter.md", "w") as f:
-        f.write(cover_letter)
 
 if __name__ == "__main__":
-    main()
+    curses.wrapper(main)
