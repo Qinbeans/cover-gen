@@ -31,7 +31,7 @@ class Inference:
         @param prompt: the prompt for the model
         @return: the generated cover letter
         """
-        input_ids = self.model.tokenizer(prompt)
+        input_ids = self.model.tokenize(prompt)
         output = ""
         for i in self.model.generate(input_ids, repetition_penalty=1.2):
-            output += self.model.detokenizer(i)
+            output += self.model.detokenize(i)
