@@ -43,7 +43,7 @@ def select_file(stdscr, title: str, path: str, file_extension=".html") -> str:
             selected_index = (selected_index + 1) % len(files)
         elif key == curses.KEY_UP:
             selected_index = (selected_index - 1) % len(files)
-        elif key == ord(' '):  # Spacebar to select
+        elif key == ord(' ') or key == ord('\n') or key == curses.KEY_Enter:  # Spacebar to select
             return os.path.join(path, files[selected_index])
         
 def generate_cover_letter(stdscr, inference: Inference):
@@ -52,6 +52,7 @@ def generate_cover_letter(stdscr, inference: Inference):
     @param stdscr: the curses screen
     @param inference: the inference object
     """
+    curses.echo()
     details = {}
     stdscr.clear()
     stdscr.addstr("Enter your full name: ")
@@ -63,12 +64,22 @@ def generate_cover_letter(stdscr, inference: Inference):
     stdscr.addstr("\nEnter your email: ")
     stdscr.refresh()
     details["email"] = stdscr.getstr().decode("utf-8")
-    stdscr.addstr("\nEnter your address: ")
+    stdscr.addstr("\nEnter your city and state: ")
     stdscr.refresh()
     details["address"] = stdscr.getstr().decode("utf-8")
     stdscr.addstr("\nEnter the company name: ")
     stdscr.refresh()
     details["company"] = stdscr.getstr().decode("utf-8")
+    stdscr.clear()
+    stdscr.addstr("\nEnter the company address line 1: ")
+    stdscr.refresh()
+    details["company_address_1"] = stdscr.getstr().decode("utf-8")
+    stdscr.addstr("\nEnter the company address line 2: ")
+    stdscr.refresh()
+    details["company_address_2"] = stdscr.getstr().decode("utf-8")
+    stdscr.addstr("\nEnter the job title: ")
+    stdscr.refresh()
+    details["job_title"] = stdscr.getstr().decode("utf-8")
     stdscr.clear()
     curses.noecho()
     
@@ -161,7 +172,7 @@ def render_settings(stdscr, inference: Inference):
                 options[selected_index] = (options[selected_index][0], options[selected_index][1] + 10)
             elif selected_index == 1:
                 options[selected_index] = (options[selected_index][0], options[selected_index][1] + 0.1)
-        elif key == ord(' '):
+        elif key == ord(' ') or key == key == ord('\n') or key == curses.KEY_ENTER:
             if selected_index == 2:
                 break
 
@@ -198,7 +209,7 @@ def render_menu(stdscr, inference: Inference):
             selected_index = (selected_index + 1) % len(options)
         elif key == curses.KEY_UP:
             selected_index = (selected_index - 1) % len(options)
-        elif key == ord(' '):
+        elif key == ord(' ') or key == key == ord('\n') or key == curses.KEY_ENTER:
             if selected_index == 0:
                 generate_cover_letter(stdscr, inference)
             elif selected_index == 1:

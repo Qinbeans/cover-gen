@@ -8,21 +8,31 @@ def build_prompt(job_description: str, resume: str, details: dict) -> str:
     Build the prompt for the model
     """
     return f"""[INST] <<SYS>>
-    You are an assistant in generating cover letters. You are given the user's name, job description as a JSON, and the user's background information via their resume as a JSON. Your job is to interpret this data and create a professional cover letter. You can only respond in markdown.
-    <</SYS>>
+You are an assistant in generating cover letters. You are given the user's name, job description as a JSON, and the user's background information via their resume as a JSON. Your job is to interpret this data and create a professional cover letter. You can only respond in markdown.
+<</SYS>>
 
-    My name is {details["name"]}. I live at {details["address"]}. My phone number is {details["phone_number"]}. My email is {details["email"]}.
-    My resume as a JSON is:
-    ```json
-    {resume}
-    ```
-    The company I am applying to is {details['company']}.
-    The job description as a JSON is:
-    ```json
-    {job_description}
-    ```
-    Please help me generate a cover letter customized to my credentials.
-    [/INST]"""
+My name is {details["name"]}. I live at {details["address"]}. My phone number is {details["phone_number"]}. My email is {details["email"]}.
+My resume as a JSON is:
+```json
+{resume}
+```
+I am applying to {details['company']} as a {details["job_title"]}.
+The job description as a JSON is:
+```json
+{job_description}
+```
+Please help me generate a cover letter customized to my credentials.
+[/INST]
+# {details['name']}
+
+{details['address']} | {details['phone_number']} | {details['email']}
+
+{details['company']}<br>
+{details['company_address_1']}<br>
+{details['company_address_2']}<br>
+
+Dear hiring manager,
+"""
 
 class Inference:
     """
