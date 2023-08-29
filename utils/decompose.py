@@ -55,13 +55,13 @@ def find_ul_tags(element, tags: list = None) -> list:
 
     return ul_tags_with_siblings
 
-def decompose_job(text: str) -> str:
+def decompose_job(text: str, headers: list = None) -> str:
     """
     Decompose the HTML into a JSON file
     @param text: the HTML text
     @return: the JSON file
     """
-    key_headers = ["Responsibilities:", "Qualifications:", "Requirements:", "Skills:"]
+    key_headers = ["Responsibilities:", "Qualifications:", "Requirements:", "Skills:"] if headers is None else headers
     soup = BeautifulSoup(text, 'html.parser')
 
     body = soup.find("body")
@@ -83,13 +83,13 @@ def decompose_job(text: str) -> str:
 
     return json_data
 
-def decompose_resume(text: str) -> str:
+def decompose_resume(text: str, tags: list = None) -> str:
     """
     Decompose the HTML into a JSON file
     @param text: the HTML text
     @return: the JSON file
     """
-    skills_tags = ["docker", "rust", "java", "golang", "rust", "ghidra", "python", "mysql", "redis", "sqlite", "json", "pytorch","c/c++","c++/c", "orm"]
+    skills_tags = ["docker", "rust", "java", "golang", "rust", "ghidra", "python", "mysql", "redis", "sqlite", "json", "pytorch","c/c++","c++/c", "orm"] if tags is None else tags
     soup = BeautifulSoup(text, 'html.parser')
     # go through the body and find tags that contain the key headers
     body = soup.find("body")

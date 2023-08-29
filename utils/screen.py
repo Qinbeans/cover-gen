@@ -1,11 +1,13 @@
 import curses
 from utils.decompose import decompose_job, decompose_resume
-from utils.inference import Inference, build_prompt
+from utils.inference import Inference, build_prompt, load_config
 import os
 
 RESUME_PATH = "assets/resumes/"
 JOB_PATH = "assets/jobs/"
+CONFIG_PATH = "assets/configs/"
 OUTPUT_FILE = "output/cover-letter.md"
+DEFAULT_CONFIG = "default.json"
 
 def select_file(stdscr, title: str, path: str, file_extension=".html") -> str:
     """
@@ -134,7 +136,9 @@ def render_settings(stdscr, inference: Inference):
     @param inference: the inference object
     """
     config = inference.get_config()
-    options = [("Max New Tokens",config.max_new_tokens), ("Repetition Penalty", config.repetition_penalty), ("Back", None)]
+    configs = [f.replace(".json","") for f in os.listdir(CONFIG_PATH) if ".json" in f]
+    current_config = config.config_name if config.config_name is not None else DEFAULT_CONFIG
+    options = [("Max New Tokens",config.settings.max_new_tokens), ("Repetition Penalty", config.settings.repetition_penalty), ("Config", current_config), ("Back", None)]
     selected_index = 0
 
     while True:
@@ -167,13 +171,35 @@ def render_settings(stdscr, inference: Inference):
                 options[selected_index] = (options[selected_index][0], options[selected_index][1] - 10)
             elif selected_index == 1:
                 options[selected_index] = (options[selected_index][0], options[selected_index][1] - 0.1)
+            elif selected_index == 2:
+                current_index = configs.index(options[selected_index][1])
+                if current_index == 0:
+                    current_index = len(configs) - 1
+                else:
+                    current_index -= 1
+                options[selected_index] = (options[selected_index][0], configs[current_index])
+                config = load_config(configs[current_index])
+                inference.set_config(config)
+                options[0] = (options[0][0], config.settings.max_new_tokens)
+                options[1] = (options[1][0], config.settings.repetition_penalty)
         elif key == curses.KEY_RIGHT:
             if selected_index == 0:
                 options[selected_index] = (options[selected_index][0], options[selected_index][1] + 10)
             elif selected_index == 1:
                 options[selected_index] = (options[selected_index][0], options[selected_index][1] + 0.1)
+            elif selected_index == 2:
+                current_index = configs.index(options[selected_index][1])
+                if current_index == len(configs) - 1:
+                    current_index = 0
+                else:
+                    current_index += 1
+                options[selected_index] = (options[selected_index][0], configs[current_index])
+                config = load_config(configs[current_index])
+                inference.set_config(config)
+                options[0] = (options[0][0], config.settings.max_new_tokens)
+                options[1] = (options[1][0], config.settings.repetition_penalty)
         elif key == ord(' ') or key == key == ord('\n') or key == curses.KEY_ENTER:
-            if selected_index == 2:
+            if selected_index == 3:
                 break
 
     inference.set_max_new_tokens(options[0][1])
