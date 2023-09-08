@@ -78,7 +78,7 @@ def build_prompt(job_description: str, resume: str, details: dict) -> str:
     Build the prompt for the model
     """
     return f"""[INST] <<SYS>>
-You are an assistant in generating cover letters. You are given the user's name, job description as a JSON, and the user's background information via their resume as a JSON. Your job is to interpret this data and create a professional cover letter. You can only respond in markdown.
+You are an assistant in generating cover letters. You are given the user's name, job description as a JSON, and the user's background information via their resume as a JSON. Your job is to interpret this data and create a professional cover letter. You can only respond in markdown. Do not over-embelish the user's experiences.
 <</SYS>>
 
 My name is {details["name"]}. I live at {details["address"]}. My phone number is {details["phone_number"]}. My email is {details["email"]}.

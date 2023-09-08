@@ -11,6 +11,8 @@ def get_text(element) -> str:
         return element.text.replace('\xa0', ' ').replace('\u2019',"'")
     if isinstance(element, str):
         return element.replace('\xa0', ' ').replace('\u2019',"'")
+    if element is None:
+        return ""
     text = ""
     for child in element.children:
         text += get_text(child)
@@ -43,12 +45,20 @@ def find_ul_tags(element, tags: list = None) -> list:
             # loop through ul tag children and add them to a list called ul_list
             ul_list = []
             for ul_child in child.children:
+                if ul_child.name == 'ul':
+                    for ul_ul_child in ul_child.children:
+                        if isinstance(ul_ul_child, NavigableString):
+                            continue
+                        text = get_text(ul_ul_child).replace('\xa0', ' ').replace('\u2019',"'").replace('\u201c', '"').replace('\u201d', '"').strip()
+                        ul_list.append(text)
+                    continue
                 if isinstance(ul_child, NavigableString):
                     continue
-                text = get_text(ul_child).replace('\xa0', ' ').replace('\u2019',"'").replace('\u201c', '"').replace('\u201d', '"')
+                text = get_text(ul_child).replace('\xa0', ' ').replace('\u2019',"'").replace('\u201c', '"').replace('\u201d', '"').strip()
                 ul_list.append(text)
             # reduce the sibling to a single string
-            ul_tags_with_siblings.append((get_text(child.previous_sibling), ul_list))
+            sibling = get_text(child.previous_sibling)
+            ul_tags_with_siblings.append((sibling, ul_list))
 
         # recursively call the function on the child
         ul_tags_with_siblings += find_ul_tags(child)
@@ -61,8 +71,18 @@ def decompose_job(text: str, headers: list = None) -> str:
     @param text: the HTML text
     @return: the JSON file
     """
-    key_headers = ["Responsibilities:", "Qualifications:", "Requirements:", "Skills:"] if headers is None else headers
-    soup = BeautifulSoup(text, 'html.parser')
+    key_headers = ["responsibilities:", "qualifications:", "requirements:", "skills:", "opportunity", "you have", "nice to have", "experience"] if headers is None else headers
+    translate_headers = {
+        "responsibilities:": "Responsibilities",
+        "qualifications:": "Qualifications",
+        "requirements:": "Requirements",
+        "skills:": "Requirements",
+        "opportunity": "Responsibilities",
+        "you have": "Qualifications",
+        "nice to have": "Optional Requirements",
+        "experience": "Requirements"
+    }
+    soup = BeautifulSoup(text.strip().replace('\n', ''), 'html.parser')
 
     body = soup.find("body")
 
@@ -76,8 +96,11 @@ def decompose_job(text: str, headers: list = None) -> str:
             continue
         # check if tag[0] contains any of the key headers
         for key_header in key_headers:
-            if key_header in tag[0]:
-                data[key_header.replace(":","")] = tag[1]
+            if key_header in tag[0].lower():
+                if data.get(translate_headers[key_header]) is None:
+                    data[translate_headers[key_header]] = tag[1]
+                else:
+                    data[translate_headers[key_header]] += tag[1]
                 break
     json_data = json.dumps(data, indent=4)
 
@@ -90,7 +113,7 @@ def decompose_resume(text: str, tags: list = None) -> str:
     @return: the JSON file
     """
     skills_tags = ["docker", "rust", "java", "golang", "rust", "ghidra", "python", "mysql", "redis", "sqlite", "json", "pytorch","c/c++","c++/c", "orm"] if tags is None else tags
-    soup = BeautifulSoup(text, 'html.parser')
+    soup = BeautifulSoup(text.strip().replace('\n', ''), 'html.parser')
     # go through the body and find tags that contain the key headers
     body = soup.find("body")
     # find the ul tags
